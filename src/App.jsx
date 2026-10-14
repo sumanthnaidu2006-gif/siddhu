@@ -9,6 +9,7 @@ import ProfileFormModal from './components/ProfileFormModal';
 import AmplifyGuideModal from './components/AmplifyGuideModal';
 import Toast from './components/Toast';
 import { INITIAL_PROFILES } from './data/mockProfiles';
+import { client, isConfigured } from './amplifyClient';
 import './App.css';
 
 export default function App() {
@@ -25,6 +26,21 @@ export default function App() {
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
+
+  // Sync with Live AWS Cloud if configured
+  useEffect(() => {
+    if (isConfigured && client?.models?.UserProfile) {
+      client.models.UserProfile.list()
+        .then((res) => {
+          if (res?.data && res.data.length > 0) {
+            setProfiles(res.data);
+          }
+        })
+        .catch((err) => {
+          console.warn('Live cloud sync fallback to local:', err);
+        });
+    }
+  }, []);
 
   // Profiles State (persisted in localStorage)
   const [profiles, setProfiles] = useState(() => {
@@ -151,6 +167,9 @@ export default function App() {
       if (activeProfile && activeProfile.id === profileData.id) {
         setActiveProfile(profileData);
       }
+      if (isConfigured && client?.models?.UserProfile) {
+        client.models.UserProfile.update(profileData).catch(console.error);
+      }
       addToast(`Updated profile for ${profileData.name}`, 'success');
     } else {
       // Create new
@@ -161,6 +180,33 @@ export default function App() {
         joinedDate: 'Just now'
       };
       setProfiles((prev) => [newProfile, ...prev]);
+
+      if (isConfigured && client?.models?.UserProfile) {
+        client.models.UserProfile.create({
+          email: newProfile.email,
+          profileOwner: newProfile.email,
+          name: newProfile.name,
+          role: newProfile.role,
+          department: newProfile.department,
+          status: newProfile.status,
+          location: newProfile.location,
+          phone: newProfile.phone,
+          timezone: newProfile.timezone,
+          bio: newProfile.bio,
+          avatar: newProfile.avatar,
+          skills: newProfile.skills,
+          isFavorite: newProfile.isFavorite
+        })
+          .then((res) => {
+            if (res?.data?.id) {
+              setProfiles((prev) =>
+                prev.map((p) => (p.id === newProfile.id ? { ...p, id: res.data.id } : p))
+              );
+            }
+          })
+          .catch(console.error);
+      }
+
       addToast(`Added ${newProfile.name} to the directory`, 'success');
     }
   };
@@ -172,6 +218,9 @@ export default function App() {
       setProfiles((prev) => prev.filter((p) => p.id !== id));
       if (activeProfile && activeProfile.id === id) {
         setActiveProfile(null);
+      }
+      if (isConfigured && client?.models?.UserProfile) {
+        client.models.UserProfile.delete({ id }).catch(console.error);
       }
       addToast(`Profile removed`, 'danger');
     }
@@ -210,6 +259,7 @@ export default function App() {
         toggleTheme={toggleTheme}
         onOpenAddModal={handleOpenAdd}
         onOpenAmplifyGuide={() => setAmplifyGuideOpen(true)}
+        isCloudConnected={isConfigured}
       />
 
       {/* Main Content Area */}

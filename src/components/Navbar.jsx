@@ -6,7 +6,8 @@ export default function Navbar({
   theme,
   toggleTheme,
   onOpenAddModal,
-  onOpenAmplifyGuide
+  onOpenAmplifyGuide,
+  isCloudConnected
 }) {
   return (
     <header className="navbar">
@@ -24,7 +25,20 @@ export default function Navbar({
           <div className="brand-text">
             <h1>
               ProfilesCloud
-              <span className="brand-badge">Amplify Gen 2</span>
+              <span
+                className="brand-badge"
+                style={
+                  isCloudConnected
+                    ? {
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: 'var(--status-active)',
+                        borderColor: 'rgba(16, 185, 129, 0.4)'
+                      }
+                    : {}
+                }
+              >
+                {isCloudConnected ? '🟢 AWS Live Cloud' : 'Amplify Gen 2'}
+              </span>
             </h1>
             <span className="brand-subtitle">Team & User Directory</span>
           </div>
